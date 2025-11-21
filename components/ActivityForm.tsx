@@ -362,4 +362,10 @@ export const ActivityForm: React.FC<ActivityFormProps> = ({ initialData, availab
     <>
     <form onSubmit={handleSubmit} className="flex flex-col h-[calc(90vh-8rem)]">
       {/* Top Section: Basic Info */}
-      <div className="flex-none space-y-4 mb-6 pr-2 overflow-y-auto
+      <div className="flex-none space-y-4 mb-6 pr-2 overflow-y-auto">
+      </div>
+    </form>
+  );
+};
+
+export default ActivityForm;
