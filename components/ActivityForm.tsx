@@ -358,6 +358,24 @@ export const ActivityForm: React.FC<ActivityFormProps> = ({ initialData, availab
     );
   };
 
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+
+          const newActivity: Activity = {
+                  id: initialData?.id || '',
+                  title,
+                  description,
+                  grade: grade as '5è' | '6è',
+                  trimestre: trimestre as '1r' | '2n' | '3r',
+                  academicYear,
+                         link,
+                  curriculumIds: selectedIds,
+                  criteria: selectedCriteria
+                        };
+
+          onSave(newActivity);
+        };
+
   return (
     <>
     <form onSubmit={handleSubmit} className="flex flex-col h-[calc(90vh-8rem)]">
