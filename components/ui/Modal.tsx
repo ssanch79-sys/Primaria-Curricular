@@ -22,14 +22,15 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm">
-      <div className={`bg-white rounded-xl shadow-2xl w-full ${maxWidth} flex flex-col max-h-[90vh]`}>
-        <div className="flex justify-between items-center p-4 border-b">
+      <div className={`bg-white rounded-xl shadow-2xl w-full ${maxWidth} flex flex-col max-h-[95vh]`}>
+        <div className="flex justify-between items-center px-6 py-4 border-b flex-none">
           <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 transition-colors">
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 transition-colors rounded-full hover:bg-gray-100 p-1">
             <X size={24} />
           </button>
         </div>
-        <div className="p-4 overflow-y-auto">
+        {/* Content Wrapper - Removed p-4 to allow full-bleed layouts */}
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col relative">
           {children}
         </div>
       </div>

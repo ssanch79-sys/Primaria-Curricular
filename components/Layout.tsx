@@ -20,14 +20,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewCha
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
       {/* Sidebar */}
       <aside className="w-full md:w-64 bg-white border-r border-gray-200 flex flex-col sticky top-0 h-auto md:h-screen z-10">
-        <div className="p-6 border-b border-gray-100">
+        <div className="p-6 border-b border-gray-100 flex-none">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             EduPlan AI
           </h1>
           <p className="text-xs text-gray-400 mt-1">Primary Education Planner</p>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
           {navItems.map(item => (
             <button
               key={item.id}
@@ -44,7 +44,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewCha
           ))}
         </nav>
 
-        <div className="p-4 border-t border-gray-100">
+        <div className="p-4 border-t border-gray-100 flex flex-col gap-4 flex-none">
             <button 
                 onClick={onOpenChat}
                 className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl px-4 py-3 flex items-center justify-center gap-2 hover:shadow-lg hover:scale-[1.02] transition-all duration-200"
@@ -52,6 +52,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewCha
                 <MessageCircle size={20} />
                 <span>Chat IA</span>
             </button>
+            
+            <div className="text-[10px] text-gray-400 text-center leading-tight">
+              Dissenyat pel <br/>
+              <strong className="text-gray-600">Servei Educatiu Vallès Occidental VIII</strong>
+            </div>
         </div>
       </aside>
 

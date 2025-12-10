@@ -1,9 +1,10 @@
-
 import React, { useState, useMemo } from 'react';
 import { Activity, CurriculumItem } from '../types';
 import { CURRICULUM_DATA, AREA_COLORS } from '../constants';
-import { Edit, Trash2, Calendar, Tag, FileJson, FileSpreadsheet, ExternalLink, Search, X, ListChecks, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import { Edit, Trash2, Calendar, Tag, FileJson, FileSpreadsheet, ExternalLink, Search, X, ListChecks, ChevronDown, ChevronUp, FileText, Eye } from 'lucide-react';
 import { CompetencyBadge } from './ui/CompetencyBadge';
+import { Modal } from './ui/Modal';
+import { ActivityDetail } from './ActivityDetail';
 
 interface ActivityListProps {
   activities: Activity[];
@@ -18,8 +19,11 @@ export const ActivityList: React.FC<ActivityListProps> = ({ activities, onEdit, 
   const [selectedGrade, setSelectedGrade] = useState('');
   const [selectedArea, setSelectedArea] = useState('');
   
-  // Expanded Criteria State (Activity IDs)
+  // Expanded Criteria State (Activity IDs) - Keep for quick view in list
   const [expandedActivityIds, setExpandedActivityIds] = useState<string[]>([]);
+
+  // Detailed View State
+  const [viewingActivity, setViewingActivity] = useState<Activity | null>(null);
 
   // Filter Options Derived from Data
   const filterOptions = useMemo(() => {
@@ -63,7 +67,8 @@ export const ActivityList: React.FC<ActivityListProps> = ({ activities, onEdit, 
     return groups;
   };
 
-  const toggleCriteriaExpand = (id: string) => {
+  const toggleCriteriaExpand = (e: React.MouseEvent, id: string) => {
+      e.stopPropagation(); // Prevent opening modal
       setExpandedActivityIds(prev => 
         prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]
       );
@@ -124,6 +129,11 @@ export const ActivityList: React.FC<ActivityListProps> = ({ activities, onEdit, 
       setSelectedArea('');
       setSelectedGrade('');
       setSelectedYear('');
+  };
+
+  const handleEditInternal = (activity: Activity) => {
+      setViewingActivity(null); // Close detail view
+      onEdit(activity); // Open edit form
   };
 
   if (activities.length === 0) {
@@ -236,11 +246,15 @@ export const ActivityList: React.FC<ActivityListProps> = ({ activities, onEdit, 
         const isExpanded = expandedActivityIds.includes(activity.id);
         
         return (
-            <div key={activity.id} className="bg-white rounded-xl p-5 border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all group">
+            <div 
+                key={activity.id} 
+                onClick={() => setViewingActivity(activity)}
+                className="bg-white rounded-xl p-5 border border-gray-200 hover:border-blue-400 hover:shadow-md transition-all group cursor-pointer"
+            >
                 <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
                         <div className="flex items-center flex-wrap gap-2 mb-2">
-                            <h3 className="text-lg font-bold text-gray-800">{activity.title}</h3>
+                            <h3 className="text-lg font-bold text-gray-800 group-hover:text-blue-700 transition-colors">{activity.title}</h3>
                             <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded border border-indigo-100">
                                 {activity.academicYear}
                             </span>
@@ -259,16 +273,22 @@ export const ActivityList: React.FC<ActivityListProps> = ({ activities, onEdit, 
                             </span>
                         </div>
                     </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                    <div className="flex gap-1 ml-2">
+                         <button 
+                            onClick={(e) => { e.stopPropagation(); setViewingActivity(activity); }}
+                            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors sm:hidden"
+                        >
+                            <Eye size={18} />
+                        </button>
                         <button 
-                            onClick={() => onEdit(activity)}
+                            onClick={(e) => { e.stopPropagation(); onEdit(activity); }}
                             className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                             title="Editar"
                         >
                             <Edit size={18} />
                         </button>
                         <button 
-                            onClick={() => onDelete(activity.id)}
+                            onClick={(e) => { e.stopPropagation(); onDelete(activity.id); }}
                             className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             title="Eliminar"
                         >
@@ -286,6 +306,7 @@ export const ActivityList: React.FC<ActivityListProps> = ({ activities, onEdit, 
                             href={activity.link} 
                             target="_blank" 
                             rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
                             className="inline-flex items-center gap-1.5 text-xs font-medium bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-100 hover:bg-blue-100 transition-colors"
                         >
                             <ExternalLink size={12} />
@@ -334,8 +355,8 @@ export const ActivityList: React.FC<ActivityListProps> = ({ activities, onEdit, 
                             
                             {(hasCriteria || hasEvaluation) && (
                                 <button 
-                                    onClick={() => toggleCriteriaExpand(activity.id)}
-                                    className="text-xs flex items-center gap-1 text-gray-500 hover:text-blue-600 font-medium transition-colors"
+                                    onClick={(e) => toggleCriteriaExpand(e, activity.id)}
+                                    className="text-xs flex items-center gap-1 text-gray-500 hover:text-blue-600 font-medium transition-colors p-1"
                                 >
                                     {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                                     {hasEvaluation ? 'Detalls i Avaluació' : `${activity.criteria.length} criteris`}
@@ -343,9 +364,9 @@ export const ActivityList: React.FC<ActivityListProps> = ({ activities, onEdit, 
                             )}
                         </div>
                         
-                        {/* Expanded Criteria / Evaluation View */}
+                        {/* Expanded Criteria / Evaluation View (Inline) */}
                         {isExpanded && (
-                            <div className="mt-3 space-y-3 animate-in slide-in-from-top-2">
+                            <div className="mt-3 space-y-3 animate-in slide-in-from-top-2 cursor-default" onClick={(e) => e.stopPropagation()}>
                                 {hasCriteria && (
                                     <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 text-sm">
                                         <h5 className="text-xs font-bold text-gray-500 uppercase mb-2 flex items-center gap-1">
@@ -379,6 +400,23 @@ export const ActivityList: React.FC<ActivityListProps> = ({ activities, onEdit, 
             </div>
         );
       })}
+
+      {/* Detail Modal */}
+      <Modal
+         isOpen={!!viewingActivity}
+         onClose={() => setViewingActivity(null)}
+         title="Detall de l'Activitat"
+         maxWidth="max-w-4xl"
+      >
+         {viewingActivity && (
+             <ActivityDetail 
+                activity={viewingActivity} 
+                onClose={() => setViewingActivity(null)} 
+                onEdit={handleEditInternal}
+             />
+         )}
+      </Modal>
+
     </div>
   );
 };
