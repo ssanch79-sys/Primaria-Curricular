@@ -1,98 +1,119 @@
-
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { CURRICULUM_DATA } from '../constants';
 
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+// Use Vite's environment variable system
+const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
+
+if (!apiKey) {
+  console.error("VITE_GOOGLE_API_KEY not found in environment variables");
+}
+
+const genAI = new GoogleGenerativeAI(apiKey || '');
+
+// Using the fast and reliable Gemini 1.5 Flash
+const MODEL_ID = 'gemini-1.5-flash';
+
+const model = genAI.getGenerativeModel({ model: MODEL_ID });
+
+const getModel = (systemInstruction: string, responseSchema?: any) => {
+  return genAI.getGenerativeModel({
+    model: MODEL_ID,
+    systemInstruction,
+    generationConfig: {
+      responseMimeType: responseSchema ? 'application/json' : 'text/plain',
+      responseSchema
+    }
+  });
+};
 
 export const suggestActivityDetails = async (title: string, grade: string) => {
-  if (!apiKey) throw new Error("API Key missing");
-  
-  const modelId = 'gemini-2.5-flash';
-  const prompt = `
+  const systemInstruction = `
     Ets un mestre expert de primària a Catalunya redactant la programació d'aula.
-    Genera una descripció tècnica i completa per a l'activitat escolar: "${title}" (Nivell: ${grade}).
+    El teu objectiu és generar descripcions tècniques i precises per a documents docents.
+    Estil: Tècnic, professional, concís. NO t'adrecis a les famílies ni als alumnes.
+    Idioma: Català.
+  `;
+
+  const prompt = `
+    Activitat: "${title}"
+    Nivell: ${grade}
     
-    Inclou:
+    Genera una descripció completa que inclogui:
     1. Objectiu didàctic principal.
     2. Dinàmica de treball dels alumnes.
     
     Longitud: 60-80 paraules.
-    Estil: Tècnic, professional, per a documentació docent interna. NO t'adrecis a les famílies ni als alumnes.
     IMPORTANT: No utilitzis format markdown ni asteriscs (**). Només text pla.
-    Idioma: Català.
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: modelId,
-      contents: prompt,
-    });
-    return response.text;
+    const aiModel = getModel(systemInstruction);
+    const result = await aiModel.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
   } catch (error) {
     console.error("Gemini error:", error);
-    return "Error generating description.";
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return `Error generant la descripció: ${errorMessage}`;
   }
 };
 
 export const expandActivityContent = async (title: string, shortDescription: string, grade: string) => {
-  if (!apiKey) throw new Error("API Key missing");
+  const systemInstruction = `
+    Ets un mestre expert redactant seqüències didàctiques.
+    Utilitza terminologia pedagògica actualitzada.
+    Estil: Tècnic docent. Text pla sense Markdown.
+    Idioma: Català.
+  `;
 
-  const modelId = 'gemini-2.5-flash';
   const prompt = `
-    Ets un mestre expert redactant la programació d'aula.
-    
     Títol: "${title}"
-    Descripció: "${shortDescription}"
+    Context: "${shortDescription}"
     Nivell: ${grade}
 
-    Genera una seqüència didàctica detallada per al mestre:
+    Genera una seqüència didàctica detallada:
     1. Introducció (Activació de coneixements previs).
-    2. Desenvolupament (Instruccions pas a pas de l'activitat).
+    2. Desenvolupament (Instruccions pas a pas).
     3. Tancament (Síntesi i reflexió).
-    
-    Estil: Tècnic docent. NO t'adrecis a les famílies.
-    IMPORTANT: No utilitzis asteriscs (**) ni format markdown. Escriu en text pla, net i ben redactat en Català.
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: modelId,
-      contents: prompt,
-    });
-    return response.text;
+    const aiModel = getModel(systemInstruction);
+    const result = await aiModel.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
   } catch (error) {
     console.error("Gemini expansion error:", error);
-    return "Error expanding activity.";
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return `Error detallant l'activitat: ${errorMessage}`;
   }
 };
 
 export const suggestEvaluation = async (title: string, description: string, grade: string) => {
-  if (!apiKey) throw new Error("API Key missing");
+  const systemInstruction = `
+    Ets un especialista en avaluació per competències.
+    Genera indicadors observables i mesurables.
+    Format: Text pla (sense negretes ni markdown).
+    Idioma: Català.
+  `;
 
-  const modelId = 'gemini-2.5-flash';
   const prompt = `
-    Ets un especialista en avaluació educativa.
-    Activitat: "${title}".
-    Descripció: "${description}".
-    Nivell: ${grade}.
+    Activitat: "${title}"
+    Descripció: "${description}"
+    Nivell: ${grade}
     
-    Genera una proposta tècnica d'avaluació:
-    1. Indicadors d'avaluació observables (concrets i mesurables).
+    Proposta tècnica d'avaluació:
+    1. Indicadors d'avaluació observables.
     2. Instruments d'avaluació recomanats.
     
-    Estil: Documentació interna per al mestre. NO t'adrecis a les famílies.
-    Format: Text net, estructurat, en Català. 
-    IMPORTANT: No utilitzis asteriscs (**) ni negretes. Només text pla.
     Màxim 150 paraules.
   `;
 
   try {
-    const response = await ai.models.generateContent({
-        model: modelId,
-        contents: prompt,
-    });
-    return response.text;
+    const aiModel = getModel(systemInstruction);
+    const result = await aiModel.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
   } catch (error) {
     console.error("Gemini evaluation error:", error);
     return "Error generant avaluació.";
@@ -100,122 +121,117 @@ export const suggestEvaluation = async (title: string, description: string, grad
 };
 
 export const generateRubricHTML = async (title: string, description: string, criteria: string[], grade: string) => {
-  if (!apiKey) throw new Error("API Key missing");
-  
-  const modelId = 'gemini-2.5-flash';
-  
-  const criteriaListString = criteria.length > 0 ? criteria.map(c => `- ${c}`).join('\n') : 'Cap criteri específic seleccionat.';
-  
-  const prompt = `
-    Ets un expert en disseny curricular i avaluació.
-    Crea un document d'avaluació (rúbrica) complet i tècnic en format HTML optimitzat per a Google Docs.
+  const criteriaListString = criteria.length > 0 ? criteria.map(c => `- ${c}`).join('\n') : 'Criteris generals de l\'etapa.';
 
-    Dades de l'activitat:
+  const systemInstruction = `
+    Ets un expert en disseny web i documentació educativa.
+    La teva tasca és generar codi HTML net i específic per ser copiat i enganxat a Google Docs o Word.
+    
+    REGLES CRÍTIQUES D'HTML:
+    1. Utilitza NOMÉS etiquetes <table>, <tr>, <th>, <td>.
+    2. NO utilitzis CSS Grid ni Flexbox.
+    3. Afegeix estils en línia (inline styles) a la taula per assegurar que les vores es vegin al copiar-ho.
+       Exemple: <table style="border-collapse: collapse; width: 100%; border: 1px solid black;">
+       Exemple cel·les: <td style="border: 1px solid black; padding: 8px;">
+    4. Retorna NOMÉS el codi HTML dins del <body>, sense etiquetes <html> o <head>.
+  `;
+
+  const prompt = `
+    Crea una Rúbrica d'Avaluació per a:
     - Títol: "${title}"
     - Descripció: "${description}"
     - Nivell: ${grade}
-    - Criteris d'Avaluació Oficials (amb la seva nomenclatura específica): 
+    - Criteris Oficials a avaluar: 
       ${criteriaListString}
 
-    Requisits del codi:
-    1. Genera NOMÉS el codi HTML dins d'un div principal. No incloguis <html>, <head> o <body> tags.
-    2. IMPORTANT: Utilitza etiquetes <table> estàndard per a la rúbrica. No utilitzis CSS Grid o Flexbox complex, ja que no es copien bé a Google Docs.
-    
-    Estructura del document:
-    1. Títol <h2>: "${title}"
-    2. Apartat de context: "Descripció: ${description.substring(0, 100)}..."
-    3. Llistat de Criteris:
-       - Crea un apartat titulat "Criteris d'Avaluació Associats".
-       - Fes servir una llista <ul> on cada element <li> mostri el text EXACTE proporcionat als criteris (incloent codis com CE1, CE2, etc.).
-    4. Taula Rúbrica:
-       - Columnes: "Criteri Vinculat", "Excel·lent (4)", "Notable (3)", "Satisfactori (2)", "En procés (1)".
-       - A la primera columna, indica quin criteri específic s'està avaluant (Fes servir la nomenclatura oficial, ex: "CE1 - 1.1...").
-       - Genera els descriptors per a cada nivell basant-te en els criteris.
-    
-    Estil: Professional i sobri.
+    Estructura del document HTML:
+    1. Títol (h2).
+    2. Breu context de l'activitat (p).
+    3. Llista de Criteris (ul/li).
+    4. TAULA DE RÚBRICA:
+       - Columnes: "Criteri / Saber", "Excel·lent (4)", "Notable (3)", "Satisfactori (2)", "En procés (1)".
+       - Files: Genera una fila per a cada criteri o aspecte clau de l'activitat.
+       - Contingut: Redacta descriptors progressius per a cada nivell competencial.
+
+    Assegura't que la taula tingui vores visibles (border: 1px solid #000) en l'estil en línia.
   `;
 
   try {
-    const response = await ai.models.generateContent({
-        model: modelId,
-        contents: prompt,
-    });
-    const text = response.text || '';
-    // Clean markdown code blocks if present
+    const aiModel = getModel(systemInstruction);
+    const result = await aiModel.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text() || '';
+    // Clean up code blocks if the model returns them despite instructions
     return text.replace(/```html/g, '').replace(/```/g, '').trim();
   } catch (error) {
     console.error("Gemini rubric HTML error:", error);
-    return "<p>Error generant el document.</p>";
+    return "<p style='color:red'>Error generant el document. Si us plau, comprova la connexió.</p>";
   }
 };
 
 export const suggestCurriculumLinks = async (title: string, description: string) => {
-  if (!apiKey) throw new Error("API Key missing");
-  
-  // Create a simplified version of the curriculum for context to save tokens/complexity
   const curriculumContext = CURRICULUM_DATA.map(c => ({
     id: c.id,
     area: c.area,
     text: `${c.saber}: ${c.description}`
   })).map(c => JSON.stringify(c)).join('\n');
 
-  const modelId = 'gemini-2.5-flash';
-  const prompt = `
-    I have an educational activity.
-    Title: "${title}"
-    Description: "${description}"
-
-    Here is the available curriculum list (JSON format):
-    ${curriculumContext}
-
-    Analyze the activity and identify the curriculum items that best match it.
-    Return a JSON array of objects. Each object must have:
-    - "id": The ID of the curriculum item (e.g., "c1").
-    - "reason": A brief explanation (max 15 words) in Catalan of why this item fits.
-
-    Select at most 3 items.
-    Return ONLY the JSON array, no markdown formatting.
+  const systemInstruction = `
+    You are a curriculum matching specialist for the Catalan education system.
+    Your task is to analyze an activity and find the most relevant curriculum items from the provided list.
+    Return ONLY valid JSON.
   `;
 
+  const prompt = `
+    Activity Title: "${title}"
+    Activity Description: "${description}"
+
+    Available Curriculum Items (JSON):
+    ${curriculumContext}
+
+    Task: Identify the top 1-3 curriculum items that best match this activity.
+    Output: A JSON array of objects with "id" (string) and "reason" (string, in Catalan).
+  `;
+
+  const responseSchema = {
+    type: SchemaType.ARRAY,
+    items: {
+      type: SchemaType.OBJECT,
+      properties: {
+        id: { type: SchemaType.STRING },
+        reason: { type: SchemaType.STRING },
+      },
+      required: ["id", "reason"],
+    }
+  };
+
   try {
-    const response = await ai.models.generateContent({
-      model: modelId,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json'
-      }
-    });
-    const text = response.text || '[]';
-    // Clean up potentially wrapped markdown
-    const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(cleanText) as { id: string; reason: string }[];
+    const aiModel = getModel(systemInstruction, responseSchema);
+    const result = await aiModel.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text() || '[]';
+    return JSON.parse(text) as { id: string; reason: string }[];
   } catch (error) {
     console.error("Gemini matching error:", error);
     return [];
   }
 };
 
-export const chatWithCurriculum = async (message: string, history: {role: string, text: string}[]) => {
-    if (!apiKey) throw new Error("API Key missing");
-
-    const modelId = 'gemini-2.5-flash';
-    const systemInstruction = `
+export const chatWithCurriculum = async (message: string, history: { role: string, text: string }[]) => {
+  const systemInstruction = `
     You are an expert educational planner and consultant specializing in the Catalan curriculum for primary education.
     Your goal is to help teachers plan activities, understand curriculum competencies, and evaluate student progress.
-    
     Tone: Professional, encouraging, and practical. STRICTLY for teachers, never address parents/families.
     Language: Catalan.
     `;
 
-    const chatSession = ai.chats.create({
-        model: modelId,
-        config: { systemInstruction },
-        history: history.map(h => ({
-            role: h.role as 'user' | 'model',
-            parts: [{ text: h.text }]
-        }))
-    });
+  const chat = genAI.getGenerativeModel({ model: MODEL_ID, systemInstruction }).startChat({
+    history: history.map(h => ({
+      role: h.role as 'user' | 'model',
+      parts: [{ text: h.text }]
+    }))
+  });
 
-    const result = await chatSession.sendMessageStream({ message });
-    return result;
+  const result = await chat.sendMessageStream(message);
+  return result;
 };
